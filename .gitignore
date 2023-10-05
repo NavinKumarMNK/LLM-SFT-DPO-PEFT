@@ -1,4 +1,4 @@
 .hypothesis
-data/
 models/phi-1_5
+./data/SHP
 /data
