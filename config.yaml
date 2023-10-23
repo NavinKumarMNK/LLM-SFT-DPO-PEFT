@@ -1,0 +1,12 @@
+data:
+  sft: 
+    - path: data/alpaca/
+  dpo:
+    - path: data/hh-rlfh/
+  rlhf:
+    - path: data/hh-rlfh/
+
+model:
+  mistral:
+    - path: models/mistral-7b/
+

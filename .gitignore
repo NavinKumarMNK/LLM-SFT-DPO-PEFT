@@ -1,4 +1,9 @@
 .hypothesis
 models/phi-1_5
-./data/SHP
+data/alpaca
+data/hh-rlhf
+models/mistral-7b
+
+
+
 /data
