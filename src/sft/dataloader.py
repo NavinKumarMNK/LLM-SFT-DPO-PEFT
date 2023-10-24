@@ -8,7 +8,7 @@ import logging
 
 from torch.utils.data import Dataset, DataLoader
 from lightning.pytorch import LightningDataModule
-from typing import Dict
+from typing import Dict, Tuple
 
 
 sys.path.append(
@@ -31,12 +31,12 @@ class SFTDataLoader():
         self.num_proc = num_proc
         self.logger: logging.Logger  = logger
     
-    def get_datasets(self, path:str):
+    def get_datasets(self, path:str) -> Tuple[Dataset, Dataset]: 
         dataset = self._load_datasets(path)
         dataset =  dataset.train_test_split(
             test_size=self.val_size
         )
-        return dataset['train'], dataset['test']
+        return (dataset['train'], dataset['test'])
         
     def process_tokenize(self, data_point):
         model_inputs = {
