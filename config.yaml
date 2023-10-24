@@ -1,12 +1,14 @@
-data:
-  sft: 
-    - path: data/alpaca/
-  dpo:
-    - path: data/hh-rlfh/
-  rlhf:
-    - path: data/hh-rlfh/
+sft:
+  seed: 42
+  params:
+    max_len: 2048
+    val_size: 0.2
+    num_proc: 4
+  data:
+    path: /workspace/LLM/data/alpaca/
+  model:
+    path: /workspace/LLM/models/mistral-7b/
+  lora:
+    type: qlora   # qlora for quantized LoRa, peft for perfect LoRa
 
-model:
-  mistral:
-    - path: models/mistral-7b/
-
+     

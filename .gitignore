@@ -3,7 +3,4 @@ models/phi-1_5
 data/alpaca
 data/hh-rlhf
 models/mistral-7b
-
-
-
-/data
+__pycache__

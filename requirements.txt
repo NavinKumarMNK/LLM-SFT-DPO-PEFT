@@ -1,0 +1,11 @@
+lightning
+wandb
+ray[all]
+python-multipart
+captum
+optuna
+pandas
+transformers
+datasets
+peft
+bitsandbytes
