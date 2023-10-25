@@ -1,3 +1,5 @@
+# @author: NavinKumarMNK
+
 import torch
 import lightning.pytorch as pl
 import bitsandbytes as bnb
@@ -8,6 +10,7 @@ from transformers import (
     AutoModelForCausalLM, 
     AutoTokenizer,
     BitsAndBytesConfig,
+    TrainingArguments,
 )
 from peft import (
     LoraConfig,
@@ -15,8 +18,12 @@ from peft import (
     TaskType,
     get_peft_model,
 )
+from trl import SFTTrainer
 
-from dataloader import SFTDataLoader
+try:
+    from dataloader import SFTDataLoader
+except Exception as e:
+    from .dataloader import SFTDataLoader
 
 class SupervisedFineTuning():
     def __init__(self, config: Dict, logger) -> None:
@@ -33,24 +40,17 @@ class SupervisedFineTuning():
         self._load_dataset(
             path=config['data']['path'],
             config=config['data']['params'],
-        )    
+        )  
+        
+        self.trainer_args = config['trainer']['params']
             
     def _load_model(self, path:Dict, config:Dict) -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(path)
-        special_tokens_dict = {
-            'sep_token': '<SEP>',
-            'pad_token': '<PAD>',
-            'cls_token': '<CLS>',
-            'mask_token': '<MASK>'
-        }
-
-        tokenizer.add_special_tokens(special_tokens_dict)
-        
         
         conf_kwargs = {
             "trust_remote_code": True,
             "torch_dtype": (config['torch_dtype'] if config['torch_dtype'] in ["auto", None]
-                else getattr(torch, config['torch_dtype']))[0],
+                else getattr(torch, config['torch_dtype'])),
             "low_cpu_mem_usage": True
         }
         
@@ -78,7 +78,8 @@ class SupervisedFineTuning():
                 
         self.model = AutoModelForCausalLM.from_pretrained(
             path,
-            safe_load_=True,
+            use_safetensors=config['use_safetensors'],
+            variant=config['variant'],
             from_tf=bool(".ckpt" in path),
             **conf_kwargs    
         )
@@ -89,7 +90,7 @@ class SupervisedFineTuning():
         if 'peft_config' in config:
             if config['peft_config']['model_path'] == False:
                 self.logger.info("New PEFT model")    
-                lora_config = LoraConfig(
+                self.peft_config = LoraConfig(
                     task_type=TaskType.CAUSAL_LM,
                     inference_mode=False,
                     target_modules=config['peft_config']['target_modules'],
@@ -98,7 +99,7 @@ class SupervisedFineTuning():
                     lora_dropout=config['peft_config']['dropout'],
                     modules_to_save=config['peft_config']['modules_to_save'],
                 )
-                model = get_peft_model(self.model, lora_config)
+
             else:
                 self.logger.info(f"Loading PEFT model {config['peft_config']['model']}")
                 self.model = PeftModel.from_pretrained(
@@ -106,21 +107,32 @@ class SupervisedFineTuning():
                     path=config['peft_config']['model_path'],
                     is_trainable=True,
                 )
-            
-        model.print_trainable_parameters()
-        
+                    
     def _load_dataset(self, path:str, config:Dict) -> None:
         sft_dataloader = SFTDataLoader(
             max_len=config['max_len'],
             val_size=config['val_size'],
             num_proc=config['num_proc'],
             tokenizer=self.tokenizer,
+            logger=self.logger
         )
         self.train_dataset, self.val_dataset = sft_dataloader.get_datasets(path=path)
         print(self.train_dataset, self.val_dataset)
     
     def train(self):
-        pass
+        print(self.trainer_args)
+        trainer = SFTTrainer(
+            model=self.model,
+            train_dataset=self.train_dataset,
+            eval_dataset=self.val_dataset,
+            tokenizer=self.tokenizer,
+            peft_config=self.peft_config,
+            max_seq_length=None,
+            args=TrainingArguments(**self.trainer_args),
+        )
+        
+        trainer.train()
+    
     
 if __name__ == '__main__':
     import logging

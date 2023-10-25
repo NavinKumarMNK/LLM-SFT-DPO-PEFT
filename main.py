@@ -1,12 +1,9 @@
 import argparse
 import yaml
+import logging
 
-from src.sft.main import SupervisedFineTuning
-
-'''from src.rlhf import RLHF
-from src.dpo import DPO
-from src.chat import Chat'''
-
+from src.sft import SupervisedFineTuning
+from src.dpo import DirectPreferenceOptimization
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -26,17 +23,29 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
+    logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+    logger = logging.getLogger(__name__)
+    
     # SFT Parser
     if args.command == 'sft':
         if args.params:
             with open(args.params, 'r') as f:
                 config = yaml.safe_load(f)
-            sft = SupervisedFineTuning(config['sft'])
+            sft = SupervisedFineTuning(config['sft'], logger=logger)
             sft.train()
         else:
             print("Please provide a yaml file")
             exit(1)
     
+    # DPO Parser
+    if args.command == 'dpo':
+        if args.params:
+            with open(args.params, 'r') as f:
+                config = yaml.safe_load(f)
+            dpo = DirectPreferenceOptimization(config['dpo'], logger=logger)
+        else:
+            print("Please provide a yaml file")
+            exit(1)
     '''
     # RLHF Parser
     if args.command == 'rlhf':
@@ -48,15 +57,6 @@ if __name__ == "__main__":
             print("Please provide a yaml file")
             exit(0)
     
-    # DPO Parser
-    if args.command == 'dpo':
-        if args.params:
-            with open(args.params, 'r') as f:
-                config = yaml.safe_load(f)
-            print(config)
-        else:
-            print("Please provide a yaml file")
-            exit(0)
     
     # Chat Parser
     if args.command == 'chat':

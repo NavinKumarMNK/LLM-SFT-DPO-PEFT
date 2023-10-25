@@ -3,27 +3,30 @@ sft:
   data:
     path: /workspace/LLM/data/alpaca/
     params:
-      max_len: 2048
+      max_len: 512
       val_size: 0.2
       num_proc: 4
   model:
-    path: /workspace/LLM/models/mistral-7b/
+    path: /workspace/LLM/models/mistral-7b
     params:
       quantization: 4-bit
       torch_dtype: auto
+      use_safetensors: True
+      variant: mistral
       quantization_config:
-        use_double_quant: True,
+        use_double_quant: True
         quant_type: nf4
       peft_config:
         model_path: False  # [path, False]
-        target_modules: [all]
-        modules_to_save: [all]
-        r: 1
-        alpha: 0.5
-        dropout: 0.2
+        target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','down_proj','up_proj']
+        modules_to_save: ['q_proj','v_proj','k_proj','o_proj','gate_proj','down_proj','up_proj']
+        r: 128
+        alpha: 32
+        dropout: 0.05
   trainer:
     params:
-      batch_size: 8
+      output_dir: '/workspace/LLM/temp/'
+
 
 
      
