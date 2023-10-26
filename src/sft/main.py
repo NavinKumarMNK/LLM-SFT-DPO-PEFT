@@ -4,6 +4,7 @@ import torch
 import lightning.pytorch as pl
 import bitsandbytes as bnb
 import transformers
+import math
 
 from typing import Dict
 from transformers import (
@@ -17,6 +18,7 @@ from peft import (
     PeftModel,
     TaskType,
     get_peft_model,
+    prepare_model_for_int4_training
 )
 from trl import SFTTrainer
 
@@ -46,10 +48,13 @@ class SupervisedFineTuning():
             
     def _load_model(self, path:Dict, config:Dict) -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(path)
+        print(self.tokenizer.eos_token)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
         
         conf_kwargs = {
             "trust_remote_code": True,
-            "torch_dtype": (config['torch_dtype'] if config['torch_dtype'] in ["auto", None]
+            "torch_dtype": (config['torch_dtype'] 
+                if config['torch_dtype'] in ["auto", None]
                 else getattr(torch, config['torch_dtype'])),
             "low_cpu_mem_usage": True
         }
@@ -62,7 +67,7 @@ class SupervisedFineTuning():
             conf_kwargs["load_in_8bit"] = True
             conf_kwargs["quantization_config"] = BitsAndBytesConfig(
                 load_in_8bit=True,
-                bnb_8bit_compute_dtype=torch.float16,
+                bnb_8bit_compute_dtype=torch.bfloat16,
                 **config['quantization_config']
             )            
         elif config['quantization'] == '4-bit':
@@ -70,7 +75,7 @@ class SupervisedFineTuning():
             conf_kwargs["load_in_4bit"] = True
             conf_kwargs["quantization_config"] = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_compute_dtype=torch.bfloat16,
                 **config['quantization_config']
             )
         else:
@@ -120,7 +125,6 @@ class SupervisedFineTuning():
         print(self.train_dataset, self.val_dataset)
     
     def train(self):
-        print(self.trainer_args)
         trainer = SFTTrainer(
             model=self.model,
             train_dataset=self.train_dataset,
@@ -129,9 +133,25 @@ class SupervisedFineTuning():
             peft_config=self.peft_config,
             max_seq_length=None,
             args=TrainingArguments(**self.trainer_args),
+            data_collator=transformers.DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
+        )
+        self.model.config.use_cache=False
+           
+        trainer.train()
+        trainer.save_model(
+            output_dir=self.trainer_args['output_dir'],
+            save_best=True,
         )
         
-        trainer.train()
+        metrics = trainer.evaluate()
+        try:
+            perplexity = math.exp(metrics["eval_loss"])
+        except OverflowError:
+            perplexity = float("inf")
+        metrics["perplexity"] = perplexity
+
+        trainer.log_metrics("eval", metrics)
+        trainer.save_metrics("eval", metrics)
     
     
 if __name__ == '__main__':
