@@ -92,7 +92,7 @@ class SFTDataLoader():
 
     def _load_datasets(self, path):
         datasets = []
-        logger.info(path)
+        self.logger.info(path)
         files = "Loaded file {}"
         for file in os.listdir(path):
             if file.endswith('.json'):
@@ -100,30 +100,31 @@ class SFTDataLoader():
                     load_dataset(
                         'json',
                         data_files=os.path.join(path, file),    
-                    )
+                    )['train']
                 )
-                logger.info(files.format(file))
+                self.logger.info(files.format(file))
             elif file.endswith('.csv'):
                 datasets.append(
                     load_dataset(
                         'csv',
                         data_files=os.path.join(path, file),
-                    )
+                    )['train']
                 )
-                logger.info(files.format(file))
+                self.logger.info(files.format(file))
             elif file.endswith('.parquet'):
                 datasets.append(
                     load_dataset(
                         'parquet',
                         data_files=os.path.join(path, file),    
-                    )
+                    )['train']
                 )
-                logger.info(files.format(file))
+                self.logger.info(files.format(file))
             else:
                 continue
-            
-            columns = list(datasets[-1].column_names.values())[0]
-            datasets[-1].map(
+
+            columns = list(datasets[-1].features)
+
+            datasets[-1] = datasets[-1].map(
                 self.process_tokenize,  
                 batched=True,
                 num_proc=self.num_proc,
@@ -136,8 +137,8 @@ class SFTDataLoader():
         else:
             datasets = datasets[0]
         
-        datasets = datasets['train']
-        return datasets        
+        self.logger.info(datasets)
+        return datasets       
 
 if __name__ == '__main__':
     from transformers import AutoTokenizer

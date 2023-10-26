@@ -14,8 +14,8 @@ sft:
       use_safetensors: True
       variant: mistral
       quantization_config:
-        use_double_quant: True
-        quant_type: nf4
+        bnb_4bit_use_double_quant: True
+        bnb_4bit_quant_type: nf4
       peft_config:
         model_path: False  # [path, False]
         target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','down_proj','up_proj']
@@ -25,8 +25,28 @@ sft:
         dropout: 0.05
   trainer:
     params:
-      output_dir: '/workspace/LLM/temp/'
+      output_dir: /workspace/LLM/models/mistral-7b-sft/
+      per_device_train_batch_size: 4
+      gradient_accumulation_steps: 16
+      learning_rate: 1e-4
+      logging_first_step: True
+      logging_steps: 100
+      num_train_epochs: 3
+      max_steps: -1
+      report_to: wandb
+      save_steps: 1000
+      save_total_limit: 1
+      push_to_hub: False
+      warmup_steps: 150
+      optim: adamw
+      eval_steps: 500
+      load_best_model_at_end: True
 
-
-
-     
+dpo:
+  seed: 42
+  data:
+    path: /workspace/LLM/data/hh-rlhf/
+    params:
+      max_len: 1024
+      val_size: 0.2
+      num_proc: 4
